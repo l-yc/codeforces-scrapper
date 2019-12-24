@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from string import Template
 import requests
 from tkinter import *
@@ -17,7 +18,7 @@ class Scrapper():
 
     def fetch_data(self, username):
         response = requests.get(Scrapper.api.substitute(methodName='user.info'), params={ 'handles': username })
-        print(response)
+        #print(response)
         data = response.json()
         if response and data['status'] == 'OK':
             return data['result'][0]    # only take the first user
@@ -85,7 +86,7 @@ class App():
     def search(self):
         try:
             data = self.scrapper.fetch_data(self.username.get())
-            print(data)
+            #print(data)
             self.error = None;
             image = self.scrapper.fetch_image('https:' + data['avatar'])
             self.avatar = ImageTk.PhotoImage(Image.open(image))
@@ -95,8 +96,11 @@ class App():
             self.max_rating = data['maxRating']
             self.max_rank = data['maxRank']    
         except ScrapperException as e:
-            print(e)
+            #print(e)
             self.error = e
+        except requests.exceptions.ConnectionError as e:
+            #print(e)
+            self.error = 'Error: You are not connected to the internet.'
         self.updateUI()
 
     def updateUI(self):
