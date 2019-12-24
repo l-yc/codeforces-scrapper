@@ -5,7 +5,7 @@ from tkinter import ttk
 import io
 from PIL import Image, ImageTk
 
-# Handle,Current Rating, Rank, Max Rating , Max Rank if the handle exists and print error if it dosen't. 
+# API interface
 class ScrapperException(Exception):
     '''raise this when there's a scrapper error'''
 
@@ -31,7 +31,7 @@ class Scrapper():
         return image
 
 
-# Tkinter GUI Setup
+# Tkinter GUI setup
 class App():
     rating_template = Template('$rating (max: $max_rating)')
     rank_template = Template('$rank (max: $max_rank)')
@@ -41,66 +41,86 @@ class App():
         self.createUI()
 
     def createUI(self):
-        root = Tk()
-        root.title('Codeforces')
-        mainframe = ttk.Frame(root, padding=(3,3,24,24), borderwidth=24, relief='solid')
-        mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
-        root.columnconfigure(0, weight=1)
-        root.columnconfigure(1, weight=1)
-        root.columnconfigure(2, weight=1)
-        root.rowconfigure(0, weight=1)
-        self.root = root
+        self.root = Tk()
+        self.root.title('Codeforces')
 
         # search
-        self.username_label = ttk.Label(mainframe, text='Enter username:')
-        self.username_label.grid(column=0, row=0, sticky='w')
+        self.form = ttk.Frame(self.root, padding=(16,16), borderwidth=8, relief='raised')
+        self.form.pack(fill=X, anchor=N, expand=True)
+
+        self.username_label = ttk.Label(self.form, text='Search username:')
+        self.username_label.pack(side=LEFT, padx=8, pady=8)
 
         self.username = StringVar()
-        self.username_entry = ttk.Entry(mainframe, width=20, textvariable=self.username)
-        self.username_entry.grid(column=1, row=0, sticky='w')
+        self.username_entry = ttk.Entry(self.form, width=20, textvariable=self.username)
+        self.username_entry.pack(side=LEFT, padx=8, pady=8)
 
-        self.username_button = ttk.Button(mainframe, text='Search!', command=self.search)
-        self.username_button.grid(column=2, row=0, sticky='w')
+        self.search_button = ttk.Button(self.form, text='Go', command=self.search)
+        self.search_button.pack(side=RIGHT)
 
         # info
-        self.title_image = None
-        self.title_image_label = ttk.Label(mainframe, image=self.title_image)
-        self.title_image_label.grid(column=0, row=1, rowspan=3)
+        self.info = ttk.Frame(self.root, padding=(16,16), borderwidth=8, relief='sunken')
+        self.info.pack(fill=BOTH, expand=True)
+
+        self.error_display = StringVar()
+        self.error_label = ttk.Label(self.info, textvariable=self.error_display)
+        self.error_label.grid(column=0, row=0, columnspan=2)
+
+        self.avatar = None
+        self.avatar_label = ttk.Label(self.info, image=self.avatar)
+        self.avatar_label.grid(column=0, row=1, rowspan=3, padx=8)
 
         self.handle_display = StringVar()
-        self.handle_label = ttk.Label(mainframe, textvariable=self.handle_display)
+        self.handle_label = ttk.Label(self.info, textvariable=self.handle_display)
         self.handle_label.grid(column=1, row=1, sticky='w')
 
         self.rating_display = StringVar()
-        self.rating_label = ttk.Label(mainframe, textvariable=self.rating_display)
+        self.rating_label = ttk.Label(self.info, textvariable=self.rating_display)
         self.rating_label.grid(column=1, row=2, sticky='w')
 
         self.rank_display = StringVar()
-        self.rank_label = ttk.Label(mainframe, textvariable=self.rank_display)
+        self.rank_label = ttk.Label(self.info, textvariable=self.rank_display)
         self.rank_label.grid(column=1, row=3, sticky='w')
 
     def search(self):
         try:
             data = self.scrapper.fetch_data(self.username.get())
             print(data)
-            image = self.scrapper.fetch_image('https:' + data['titlePhoto'])
-            self.title_image = ImageTk.PhotoImage(Image.open(image))
+            self.error = None;
+            image = self.scrapper.fetch_image('https:' + data['avatar'])
+            self.avatar = ImageTk.PhotoImage(Image.open(image))
             self.handle = data['handle']
             self.rating = data['rating']
             self.rank = data['rank']
             self.max_rating = data['maxRating']
-            self.max_rank = data['maxRank']
-            self.updateUI()
+            self.max_rank = data['maxRank']    
         except ScrapperException as e:
-            pass
+            print(e)
+            self.error = e
+        self.updateUI()
 
     def updateUI(self):
-        self.title_image_label.configure(image=self.title_image)
-        self.handle_display.set(self.handle)
-        self.rating_display.set(App.rating_template.substitute(rating=self.rating, max_rating=self.max_rating))
-        self.rank_display.set(App.rank_template.substitute(rank=self.rank, max_rank=self.max_rank))
+        if self.error is None:
+            self.error_label.grid_remove()
+            self.avatar_label.configure(image=self.avatar)
+            self.handle_display.set(self.handle)
+            self.rating_display.set(App.rating_template.substitute(rating=self.rating, max_rating=self.max_rating))
+            self.rank_display.set(App.rank_template.substitute(rank=self.rank, max_rank=self.max_rank))
+        else:
+            self.error_display.set(self.error)
+            self.error_label.grid()
+            self.avatar_label.configure(image='')
+            self.handle_display.set('')
+            self.rating_display.set('')
+            self.rank_display.set('')
 
     def run(self):
         self.root.mainloop()
 
-App().run()
+
+def main():
+    App().run()
+
+
+if __name__ == '__main__':
+    main()
